@@ -2,7 +2,7 @@ require 'debugger'
 require 'colorize'
 
 $search_radius = 5
-$width = 94
+$width = 95
 $error = 1
 
 def invalid_center?(i, j, grid_length)
