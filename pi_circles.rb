@@ -1,68 +1,89 @@
 require 'debugger'
 require 'colorize'
 
-$search_radius = 5
-$width = 95
-$error = 1
+class PiCircles
 
-def invalid_center?(i, j, grid_length)
-	i + $search_radius >= grid_length ||
-	i - $search_radius < 0 ||
-	j + $search_radius >= $width ||
-	j - $search_radius < 0 
-end
+	def initialize(options)
+		@search_radius = options[:radius]
+		@width = options[:width]
+		@error = options[:error]
+	end
 
-$record_count = 0
-def has_circle?(i, j, grid)
-	count = 0
-	test_value = grid[i - $search_radius][j]
+	def invalid_center?(i, j)
+		i + @search_radius >= @grid.count ||
+		i - @search_radius < 0 ||
+		j + @search_radius >= @width ||
+		j - @search_radius < 0 
+	end
 
-	((i - $search_radius)..(i + $search_radius)).each do |y|
-		((j - $search_radius)..(j + $search_radius)).each do |x|
-			next unless ((x - j) ** 2 + (y - i) ** 2 >= $search_radius ** 2 - $error && (x - j) ** 2 + (y - i) ** 2 <= $search_radius ** 2 + $error)
-			count += 1
-			if count > $record_count
-				$record_count = count 
-				puts "#{i}, #{j}"
+
+	def has_circle?(i, j)
+		test_value = @grid[i - @search_radius][j]
+
+		((i - @search_radius)..(i + @search_radius)).each do |y|
+			((j - @search_radius)..(j + @search_radius)).each do |x|
+				next unless on_circle?([i, j], x, y)
+				return false unless @grid[y][x] == test_value
 			end
-			return false unless grid[y][x] == test_value
+		end
+		true
+	end
+
+	def on_circle?(center, x, y)
+		i, j = center
+		if (x - j) ** 2 + (y - i) ** 2 >= @search_radius ** 2 - @error
+			if (x - j) ** 2 + (y - i) ** 2 <= @search_radius ** 2 + @error
+				return true
+			end
+		end
+		false
+	end
+
+	def make_grid
+		pi_digits = File.read("pi.txt")
+							.split("")
+							.reject { |l| l == " " }
+							.map(&:to_i)
+
+		@grid = []
+		while pi_digits.count > 0
+			current_row = pi_digits.take(@width)
+			@grid << current_row
+			pi_digits = pi_digits.drop(@width)
 		end
 	end
-	true
-end
 
-pi_digits = File.read("pi_million.txt")
-				.split("")
-				.reject { |l| l == " " }
-				.map(&:to_i)
-
-
-grid = []
-while pi_digits.count > 0
-	current_row = pi_digits.take($width)
-	grid << current_row
-	pi_digits = pi_digits.drop($width)
-end
-
-
-circle_centers = []
-grid.each_with_index do |row, i|
-	row.each_index do |j|
-		next if invalid_center?(i, j, grid.count)
-		if has_circle?(i, j, grid)
-			circle_centers << [i,j] 
+	def find_circles
+		@circle_centers = []
+		@grid.each_with_index do |row, i|
+			row.each_index do |j|
+				next if invalid_center?(i, j)
+				if has_circle?(i, j)
+					@circle_centers << [i,j] 
+				end
+			end
 		end
 	end
-end
 
-grid.each_with_index do |row, i|
-	row.each_index do |j|
-		grid[i][j] = " ".colorize(background: :black) if circle_centers.include?([i, j])
+	def print_grid
+		@grid.each_with_index do |row, i|
+			row.each_index do |j|
+				if @circle_centers.include?([i, j])
+					@grid[i][j] = " ".colorize(background: :black) 
+				end
+			end
+		end
+
+		@grid.each_with_index do |row, i| 
+			puts "#{row.join("")} :#{i}"
+		end
 	end
-end
 
-grid.each_with_index do |row, i| 
-	puts "#{row.join("")} :#{i}"
+	def run
+		make_grid
+		find_circles
+		print_grid
+		puts "#{@circle_centers.count} circles found."
+	end
+
 end
-p circle_centers
-puts $record_count
